@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Lista de Compras</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:Arial,sans-serif;background:#f0f4f8;min-height:100vh;padding:12px;padding-bottom:60px}
+h1{text-align:center;font-size:1.5rem;padding:16px 0 4px;color:#1e293b}
+.sub{text-align:center;font-size:.8rem;color:#94a3b8;margin-bottom:12px}
+
+/* Progreso */
+.prog-wrap{background:#e2e8f0;border-radius:99px;height:10px;margin:0 0 4px}
+.prog-bar{height:100%;background:linear-gradient(90deg,#ff6b35,#3b82f6);border-radius:99px;transition:width .3s;width:0%}
+.prog-label{font-size:.78rem;color:#94a3b8;text-align:right;margin-bottom:14px}
+
+/* Sección */
+.seccion{background:#fff;border-radius:14px;box-shadow:0 3px 12px rgba(0,0,0,.08);margin-bottom:14px;overflow:hidden}
+.sec-header{display:flex;align-items:center;padding:12px;gap:8px;border-bottom:1px solid #f1f5f9}
+.sec-emoji{font-size:1.4rem;cursor:pointer;padding:2px 6px;border-radius:8px;background:#f8fafc}
+.sec-nombre{flex:1;font-size:.95rem;font-weight:700;border:none;outline:none;background:transparent;color:#1e293b;font-family:Arial,sans-serif}
+.sec-nombre:focus{border-bottom:2px solid #3b82f6}
+.btn-del-sec{background:none;border:none;font-size:1.2rem;cursor:pointer;padding:4px 8px;color:#fca5a5}
+
+/* Items */
+.item{display:flex;align-items:center;padding:11px 12px;border-bottom:1px solid #f8fafc;gap:10px}
+.item:last-of-type{border-bottom:none}
+.chk{width:28px;height:28px;border-radius:8px;border:2.5px solid #cbd5e1;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff;transition:all .2s}
+.chk.on{background:linear-gradient(135deg,#ff6b35,#3b82f6);border-color:transparent}
+.chk-ico{width:14px;height:14px;stroke:#fff;stroke-width:3;fill:none;opacity:0;transition:opacity .2s}
+.chk.on .chk-ico{opacity:1}
+.item-inp{flex:1;font-size:.92rem;font-weight:600;border:none;outline:none;background:transparent;color:#1e293b;font-family:Arial,sans-serif;padding:3px 5px;border-radius:6px;min-width:0}
+.item-inp:focus{background:#f1f5f9;outline:2px solid #3b82f6}
+.item-inp.tachado{text-decoration:line-through;color:#94a3b8}
+.btn-mic-item{background:none;border:none;font-size:1.1rem;cursor:pointer;padding:4px 6px;border-radius:8px;flex-shrink:0}
+.btn-del-item{background:none;border:none;font-size:1rem;cursor:pointer;padding:4px 6px;color:#94a3b8;border-radius:8px;flex-shrink:0}
+
+/* Fila agregar ítem */
+.fila-agregar{display:flex;align-items:center;padding:10px 12px;gap:8px;border-top:1px dashed #e2e8f0;background:#fafcff}
+.inp-agregar{flex:1;font-size:.9rem;border:1.5px solid #e2e8f0;border-radius:8px;padding:8px 10px;outline:none;font-family:Arial,sans-serif;background:#fff;color:#1e293b}
+.inp-agregar:focus{border-color:#3b82f6}
+.btn-agregar{background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:.88rem;font-weight:700;cursor:pointer;flex-shrink:0}
+.btn-mic-add{background:none;border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 9px;font-size:1rem;cursor:pointer;flex-shrink:0;background:#fff}
+
+/* Botón nueva sección */
+#btn-nueva-sec{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;border:2px dashed #cbd5e1;border-radius:14px;background:transparent;font-size:.95rem;font-weight:700;color:#94a3b8;cursor:pointer;margin-bottom:14px}
+
+/* Acciones */
+.acciones{display:flex;gap:10px;margin-bottom:12px}
+.acciones button{flex:1;padding:13px;border:none;border-radius:12px;font-size:.9rem;font-weight:700;cursor:pointer;font-family:Arial,sans-serif}
+.btn-desmarcar{background:#f1f5f9;color:#94a3b8}
+.btn-compartir{background:linear-gradient(135deg,#ff6b35,#ff8c42);color:#fff}
+#btn-descargar{width:100%;padding:13px;border:2px dashed #cbd5e1;border-radius:12px;background:transparent;font-size:.9rem;font-weight:700;color:#94a3b8;cursor:pointer;font-family:Arial,sans-serif}
+
+/* Mic overlay */
+#mic-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center;flex-direction:column;gap:18px}
+#mic-overlay.activo{display:flex}
+.mic-burbuja{width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,#ff6b35,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:2.8rem;animation:rip 1s infinite}
+@keyframes rip{0%{box-shadow:0 0 0 0 rgba(255,107,53,.5)}100%{box-shadow:0 0 0 26px rgba(255,107,53,0)}}
+#mic-txt{color:#fff;font-weight:700;font-size:1rem;text-align:center;max-width:260px;line-height:1.4}
+#mic-interim{color:rgba(255,255,255,.75);font-size:.88rem;font-style:italic;min-height:1.2em;text-align:center;max-width:280px}
+#btn-cancelar-mic{background:rgba(255,255,255,.15);color:#fff;border:2px solid rgba(255,255,255,.35);border-radius:99px;padding:10px 26px;font-size:.9rem;font-weight:700;cursor:pointer;font-family:Arial,sans-serif}
+
+/* Emoji picker */
+#emoji-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:flex-end;justify-content:center}
+#emoji-overlay.activo{display:flex}
+.emoji-sheet{background:#fff;border-radius:18px 18px 0 0;padding:18px;width:100%;max-height:50vh;overflow-y:auto}
+.emoji-sheet h3{font-size:.8rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
+.emoji-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+.emoji-op{font-size:1.6rem;text-align:center;padding:6px;border-radius:10px;cursor:pointer}
+.emoji-op:active{background:#f1f5f9}
+.btn-cerrar-emoji{display:block;width:100%;margin-top:12px;padding:12px;border:none;border-radius:10px;background:#f1f5f9;font-size:.9rem;font-weight:700;color:#94a3b8;cursor:pointer;font-family:Arial,sans-serif}
+
+/* Toast */
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(70px);background:#1e293b;color:#fff;padding:10px 20px;border-radius:99px;font-size:.85rem;font-weight:700;transition:transform .3s;z-index:999;white-space:nowrap;pointer-events:none}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#aviso-voz{display:none;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px;font-size:.8rem;color:#9a3412;text-align:center;margin-bottom:12px}
+</style>
+</head>
+<body>
+
+<!-- Mic overlay -->
+<div id="mic-overlay">
+  <div class="mic-burbuja">🎙️</div>
+  <div id="mic-txt">Habla ahora…</div>
+  <div id="mic-interim"></div>
+  <button id="btn-cancelar-mic" onclick="cancelarMic()">✕ Cancelar</button>
+</div>
+
+<!-- Emoji overlay -->
+<div id="emoji-overlay">
+  <div class="emoji-sheet">
+    <h3>Elige un ícono</h3>
+    <div class="emoji-grid" id="emoji-grid"></div>
+    <button class="btn-cerrar-emoji" onclick="cerrarEmoji()">Cancelar</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<h1>🛒 Lista de Compras</h1>
+<p class="sub">Toca texto para editar • 🎙️ para dictar</p>
+
+<div class="prog-wrap"><div class="prog-bar" id="bar"></div></div>
+<div class="prog-label" id="prog-lbl">0 de 0 artículos</div>
+
+<div id="aviso-voz">⚠️ Tu navegador no soporta dictado de voz. Edita tocando el texto.</div>
+
+<div id="lista"></div>
+
+<button id="btn-nueva-sec" onclick="nuevaSeccion()">＋ Agregar nueva lista</button>
+
+<div class="acciones">
+  <button class="btn-desmarcar" onclick="desmarcarTodo()">🔄 Desmarcar todo</button>
+  <button class="btn-compartir" onclick="compartir()">📤 Compartir</button>
+</div>
+<button id="btn-descargar" onclick="descargar()">⬇️ Guardar app en mi teléfono</button>
+
+<script>
+const CLAVE = 'lista-v3';
+const EMOJIS = ['🛒','🧹','💄','🏠','🍎','🥩','🥦','🧴','👕','💊','🐾','🎒','📦','🔧','🍕','🥐','🧃','🧼','🫧','🧽','🪣','🧺','🛁','🪴','🎯','📝','🎁','🏋️','🍳','🫙','🏪','💈'];
+const COLORES = ['#fff3ee','#eff6ff','#ecfdf5','#fdf4ff','#fffbeb'];
+const COLORES_TXT = ['#ff6b35','#3b82f6','#10b981','#a855f7','#f59e0b'];
+
+const DATA_DEFECTO = [
+  { titulo:'Higiene y Limpieza', emoji:'🧹', color:0,
+    items:['Azistín: Coco','Azistín: Lavanda','Azistín: Marino','Azistín: Pino','Azistín: Fresa',
+           'Polvo decolorante: Kull','Polvo decolorante: Nefertiti','Papel higiénico',
+           'Detergente Ultra Klin','Isopos','Paste para lavar trastes: Metal',
+           'Paste para lavar trastes: Verdes','Jabón de baño Protex','Jabón de baño Palmolive'] },
+  { titulo:'Cuidado Personal y Belleza', emoji:'💄', color:1,
+    items:['Gotas para el pelo (tamaño grande)','Encrespadora de pestañas','Acetona Darosa',
+           'Acetona pura','Monómero 1 onza','Monómero 2 onzas','Monómero 4 onzas',
+           'Antisépticos','Limas Mia Secret','Lápiz de ojo: color café','Crema Pond\'s pequeña',
+           'Máscara de pestañas negra','Máscara de pestañas transparente',
+           'Peines grandes de mango','Peines dobles','Presto barba','Super Glue'] },
+  { titulo:'Hogar y Otros', emoji:'🏠', color:2,
+    items:['Vaso #10','Vaso #7','Vaso #5','Plato #6','Plato #7','Plato #8','Plato #9',
+           'Tenedor de melamina','Cuchara de melamina','Ganchos andinos'] }
+];
+
+let data = JSON.parse(JSON.stringify(DATA_DEFECTO));
+let checks = {};
+
+/* ── STORAGE ── */
+function guardar() {
+  try { localStorage.setItem(CLAVE, JSON.stringify({data, checks})); } catch(e){}
+}
+function cargar() {
+  try {
+    const r = localStorage.getItem(CLAVE);
+    if (!r) return;
+    const p = JSON.parse(r);
+    if (Array.isArray(p.data) && p.data.length) data = p.data;
+    if (p.checks && typeof p.checks === 'object') checks = p.checks;
+  } catch(e){}
+}
+
+/* ── VOZ ── */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, micObj = null, micOcupado = false;
+if (!SR) document.getElementById('aviso-voz').style.display = 'block';
+
+function crearRec() {
+  const r = new SR();
+  r.lang = 'es-MX';
+  r.interimResults = true;
+  r.maxAlternatives = 1;
+  r.continuous = false;
+  r.onresult = e => {
+    let interim = '', final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) final += t; else interim += t;
+    }
+    document.getElementById('mic-interim').textContent = interim || final;
+    if (final) aplicarVoz(final.trim());
+  };
+  r.onerror = e => {
+    micOcupado = false;
+    const msgs = {
+      'not-allowed':'🚫 Permiso de micrófono denegado. Ve a Ajustes del navegador y permite el micrófono.',
+      'no-speech':'⚠️ No se detectó voz, intenta de nuevo.',
+      'network':'⚠️ Sin conexión para el dictado.'
+    };
+    if (e.error !== 'aborted') toast(msgs[e.error] || '⚠️ Error de micrófono: ' + e.error);
+    cerrarMic();
+  };
+  r.onend = () => { micOcupado = false; cerrarMic(); };
+  return r;
+}
+
+function activarMic(obj) {
+  // obj = { tipo:'item'|'agregar', si, ii(si item) }
+  if (!SR) { toast('🎙️ Dictado no disponible en este navegador'); return; }
+  if (micOcupado) { cancelarMic(); return; }
+  micObj = obj;
+  let label = 'Habla ahora…';
+  if (obj.tipo === 'item') label = 'Dicta el nuevo nombre:\n"' + data[obj.si].items[obj.ii] + '"';
+  if (obj.tipo === 'agregar') label = 'Dicta el nombre del nuevo artículo:';
+  document.getElementById('mic-txt').textContent = label;
+  document.getElementById('mic-interim').textContent = '';
+  document.getElementById('mic-overlay').classList.add('activo');
+  rec = crearRec();
+  micOcupado = true;
+  // En Android a veces hay que pedir permiso explícito primero
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({audio: true})
+      .then(() => { try { rec.start(); } catch(e){ toast('Error al iniciar: '+e.message); cerrarMic(); } })
+      .catch(() => { toast('🚫 Permiso de micrófono denegado'); micOcupado = false; cerrarMic(); });
+  } else {
+    try { rec.start(); } catch(e){ toast('Error: '+e.message); micOcupado = false; cerrarMic(); }
+  }
+}
+
+function aplicarVoz(texto) {
+  if (!micObj || !texto) return;
+  const t = cap(texto);
+  if (micObj.tipo === 'item') {
+    data[micObj.si].items[micObj.ii] = t;
+    cerrarMic(); guardar(); render(); toast('✅ Ítem actualizado');
+  } else if (micObj.tipo === 'agregar') {
+    data[micObj.si].items.push(t);
+    cerrarMic(); guardar(); render(); toast('✅ "' + t + '" agregado');
+  }
+}
+
+function cancelarMic() {
+  if (rec) { try { rec.abort(); } catch(e){} rec = null; }
+  micOcupado = false; cerrarMic();
+}
+function cerrarMic() {
+  document.getElementById('mic-overlay').classList.remove('activo');
+  micObj = null;
+}
+const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+
+/* ── EMOJI PICKER ── */
+let emojiTarget = null;
+function abrirEmoji(si) {
+  emojiTarget = si;
+  const grid = document.getElementById('emoji-grid');
+  grid.innerHTML = '';
+  EMOJIS.forEach(em => {
+    const d = document.createElement('div');
+    d.className = 'emoji-op'; d.textContent = em;
+    d.onclick = () => { data[emojiTarget].emoji = em; cerrarEmoji(); guardar(); render(); };
+    grid.appendChild(d);
+  });
+  document.getElementById('emoji-overlay').classList.add('activo');
+}
+function cerrarEmoji() {
+  document.getElementById('emoji-overlay').classList.remove('activo');
+  emojiTarget = null;
+}
+
+/* ── SECCIONES ── */
+function nuevaSeccion() {
+  data.push({ titulo:'Nueva lista', emoji:'📝', color: data.length % COLORES.length, items:[] });
+  guardar(); render();
+  setTimeout(() => {
+    const nombres = document.querySelectorAll('.sec-nombre');
+    const last = nombres[nombres.length-1];
+    if (last) { last.focus(); last.select(); }
+  }, 80);
+}
+function eliminarSeccion(si) {
+  if (data.length === 1) { toast('Debe quedar al menos una lista'); return; }
+  if (!confirm('¿Eliminar la lista "' + data[si].emoji + ' ' + data[si].titulo + '"?')) return;
+  data.splice(si, 1);
+  const nc = {};
+  Object.entries(checks).forEach(([k,v]) => {
+    const [s,i] = k.split('-').map(Number);
+    if (s < si) nc[k] = v;
+    else if (s > si) nc[(s-1)+'-'+i] = v;
+  });
+  checks = nc; guardar(); render();
+}
+
+/* ── ITEMS ── */
+function agregarItem(si, inp) {
+  const val = inp.value.trim();
+  if (!val) { inp.focus(); return; }
+  data[si].items.push(cap(val));
+  inp.value = '';
+  guardar(); render();
+  setTimeout(() => {
+    const filas = document.querySelectorAll('.inp-agregar');
+    if (filas[si]) filas[si].focus();
+  }, 60);
+}
+function eliminarItem(si, ii) {
+  data[si].items.splice(ii, 1);
+  const nc = {};
+  Object.entries(checks).forEach(([k,v]) => {
+    const [s,i] = k.split('-').map(Number);
+    if (s === si) { if (i < ii) nc[k] = v; else if (i > ii) nc[s+'-'+(i-1)] = v; }
+    else nc[k] = v;
+  });
+  checks = nc; guardar(); render();
+}
+
+/* ── RENDER ── */
+function render() {
+  const cont = document.getElementById('lista');
+  cont.innerHTML = '';
+
+  data.forEach((sec, si) => {
+    const ci = sec.color !== undefined ? sec.color % COLORES.length : si % COLORES.length;
+    const wrap = document.createElement('div');
+    wrap.className = 'seccion';
+
+    /* Header */
+    const hdr = document.createElement('div');
+    hdr.className = 'sec-header';
+    hdr.style.background = COLORES[ci];
+
+    const emBtn = document.createElement('span');
+    emBtn.className = 'sec-emoji'; emBtn.textContent = sec.emoji || '📝';
+    emBtn.onclick = () => abrirEmoji(si);
+
+    const nmInp = document.createElement('input');
+    nmInp.type = 'text'; nmInp.className = 'sec-nombre'; nmInp.value = sec.titulo;
+    nmInp.style.color = COLORES_TXT[ci];
+    nmInp.addEventListener('blur', () => { data[si].titulo = nmInp.value; guardar(); });
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn-del-sec'; delBtn.textContent = '🗑️';
+    delBtn.onclick = () => eliminarSeccion(si);
+
+    hdr.appendChild(emBtn); hdr.appendChild(nmInp); hdr.appendChild(delBtn);
+    wrap.appendChild(hdr);
+
+    /* Items */
+    const itemsDiv = document.createElement('div');
+    itemsDiv.className = 'items';
+
+    sec.items.forEach((item, ii) => {
+      const key = si+'-'+ii;
+      const div = document.createElement('div');
+      div.className = 'item';
+
+      /* Checkbox */
+      const chk = document.createElement('div');
+      chk.className = 'chk' + (checks[key] ? ' on' : '');
+      chk.innerHTML = '<svg class="chk-ico" viewBox="0 0 12 12"><polyline points="1.5,6 4.5,9 10.5,3"/></svg>';
+      chk.addEventListener('click', () => {
+        checks[key] = !checks[key];
+        chk.classList.toggle('on', !!checks[key]);
+        inpEl.classList.toggle('tachado', !!checks[key]);
+        actualizarProg(); guardar();
+      });
+
+      /* Input texto */
+      const inpEl = document.createElement('input');
+      inpEl.type = 'text'; inpEl.className = 'item-inp' + (checks[key] ? ' tachado' : '');
+      inpEl.value = item; inpEl.autocomplete = 'off';
+      inpEl.addEventListener('blur', () => { data[si].items[ii] = inpEl.value; guardar(); });
+
+      /* Mic ítem */
+      const micBtn = document.createElement('button');
+      micBtn.className = 'btn-mic-item'; micBtn.textContent = '🎙️';
+      micBtn.title = 'Dictar';
+      micBtn.addEventListener('click', e => { e.stopPropagation(); activarMic({tipo:'item', si, ii}); });
+
+      /* Eliminar ítem */
+      const delI = document.createElement('button');
+      delI.className = 'btn-del-item'; delI.textContent = '✕';
+      delI.addEventListener('click', e => { e.stopPropagation(); eliminarItem(si, ii); });
+
+      div.appendChild(chk); div.appendChild(inpEl); div.appendChild(micBtn); div.appendChild(delI);
+      itemsDiv.appendChild(div);
+    });
+
+    /* Fila agregar ítem */
+    const filaAg = document.createElement('div');
+    filaAg.className = 'fila-agregar';
+
+    const inpAg = document.createElement('input');
+    inpAg.type = 'text'; inpAg.className = 'inp-agregar';
+    inpAg.placeholder = 'Nuevo artículo…'; inpAg.autocomplete = 'off';
+    inpAg.addEventListener('keydown', e => { if (e.key === 'Enter') agregarItem(si, inpAg); });
+
+    const btnAg = document.createElement('button');
+    btnAg.className = 'btn-agregar'; btnAg.textContent = 'Agregar';
+    btnAg.addEventListener('click', () => agregarItem(si, inpAg));
+
+    const micAg = document.createElement('button');
+    micAg.className = 'btn-mic-add'; micAg.textContent = '🎙️';
+    micAg.title = 'Dictar artículo';
+    micAg.addEventListener('click', () => {
+      activarMic({tipo:'agregar', si,
+        callback: txt => { data[si].items.push(cap(txt)); guardar(); render(); toast('✅ "'+cap(txt)+'" agregado'); }
+      });
+    });
+
+    filaAg.appendChild(inpAg); filaAg.appendChild(btnAg); filaAg.appendChild(micAg);
+    itemsDiv.appendChild(filaAg);
+    wrap.appendChild(itemsDiv);
+    cont.appendChild(wrap);
+  });
+
+  actualizarProg();
+}
+
+function actualizarProg() {
+  const total = data.reduce((a,s) => a+s.items.length, 0);
+  const done = Object.values(checks).filter(Boolean).length;
+  document.getElementById('bar').style.width = total ? (done/total*100)+'%' : '0%';
+  document.getElementById('prog-lbl').textContent = done+' de '+total+' artículos';
+}
+
+function desmarcarTodo() { checks = {}; guardar(); render(); }
+
+function compartir() {
+  let txt = '🛒 *Lista de Compras*\n\n';
+  data.forEach((s,si) => {
+    txt += '*'+s.emoji+' '+s.titulo+'*\n';
+    s.items.forEach((item,ii) => { txt += (checks[si+'-'+ii]?'✅':'⬜')+' '+item+'\n'; });
+    txt += '\n';
+  });
+  if (navigator.share) navigator.share({title:'Lista de Compras', text:txt});
+  else if (navigator.clipboard) navigator.clipboard.writeText(txt).then(()=>toast('📋 Copiada al portapapeles'));
+  else toast('No se pudo compartir');
+}
+
+/* ── DESCARGA ── */
+function descargar() {
+  const snap = JSON.stringify({data, checks});
+  const safeSnap = snap.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/<\/script>/gi,'<\\/script>');
+  const html = document.documentElement.outerHTML.replace(
+    '/* INJECT_STATE */',
+    'try{localStorage.setItem("'+CLAVE+'","'+safeSnap+'");}catch(e){}'
+  );
+  try {
+    const b64 = btoa(unescape(encodeURIComponent(html)));
+    const a = document.createElement('a');
+    a.href = 'data:text/html;base64,'+b64;
+    a.download = 'lista-compras.html';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    toast('📥 Revisa tus Descargas'); return;
+  } catch(e){}
+  try {
+    const blob = new Blob([html],{type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'lista-compras.html';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),3000);
+    toast('📥 Revisa tus Descargas'); return;
+  } catch(e){}
+  const w = window.open();
+  if (w) { w.document.write(html); w.document.close(); toast('💡 Menú → Guardar página'); }
+  else toast('Activa popups e intenta de nuevo');
+}
+
+let toastT;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(()=>el.classList.remove('show'), 3000);
+}
+
+/* ── INIT ── */
+/* INJECT_STATE */
+cargar();
+render();
+</script>
+</body>
+</html>
